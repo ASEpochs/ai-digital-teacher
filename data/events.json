@@ -1,0 +1,17 @@
+[
+  {
+    "id": "event-001",
+    "time": 5,
+    "duration": 5,
+    "students": [
+      {
+        "id": "r1-s2",
+        "label": "第一排第二位",
+        "rect": { "x": 0.18, "y": 0.24, "width": 0.12, "height": 0.28 }
+      }
+    ],
+    "behavior": "持续低头",
+    "speech": "第一排第二位同学，请集中注意力。",
+    "severity": "warning"
+  }
+]

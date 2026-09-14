@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "events": [
+    {
+      "id": "manual-warning-001",
+      "time": 10,
+      "duration": 6,
+      "student_ids": ["r1-s1", "r1-s2"],
+      "behavior": "交头接耳",
+      "speech": "第一排第一位和第二位同学，请好好听讲，不要交头接耳。",
+      "severity": "alert"
+    }
+  ],
+  "classroom_summary": "本次课堂中，第一排第一位和第二位学生在第10秒左右出现交头接耳行为，数字教师已进行语音提醒；其余时段课堂整体秩序良好。"
+}
