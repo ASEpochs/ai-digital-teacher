@@ -1,9 +1,10 @@
 import {
   AlertCircle, BarChart3, BookOpenCheck, Camera, CheckCircle2, Clock3,
-  ImageUp, Pause, Play, RefreshCw, ShieldCheck, Square, UserRound, Volume2,
+  ImageUp, Pause, Play, RefreshCw, ShieldCheck, Square, SwitchCamera, UserRound, Volume2,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
+import { countVideoInputs, requestCamera, type CameraFacingMode, type CameraRequestResult } from './camera'
 import { buildLocalReport } from './reportFallback'
 import type { BehaviorEvent, ClassroomReport, LiveFrameAnalysis, LiveSession, TeacherAsset, TeacherStatus } from './types'
 
@@ -70,6 +71,10 @@ function App() {
   const [report, setReport] = useState<ClassroomReport | null>(null)
   const [reportLoading, setReportLoading] = useState(false)
   const [sampleCount, setSampleCount] = useState(0)
+  const [cameraPreference, setCameraPreference] = useState<CameraFacingMode>('environment')
+  const [activeCameraFacing, setActiveCameraFacing] = useState<CameraFacingMode | null>(null)
+  const [availableCameraCount, setAvailableCameraCount] = useState(0)
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false)
 
   const currentElapsed = useCallback(() => {
     if (statusRef.current !== 'monitoring' || !activeSegmentStartedRef.current) return accumulatedSecondsRef.current
@@ -85,6 +90,24 @@ function App() {
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
     if (cameraRef.current) cameraRef.current.srcObject = null
+    setActiveCameraFacing(null)
+    setAvailableCameraCount(0)
+  }
+
+  const attachCamera = async (result: CameraRequestResult, requestedFacing: CameraFacingMode) => {
+    const video = cameraRef.current
+    if (!video) {
+      result.stream.getTracks().forEach((track) => track.stop())
+      throw new Error('摄像头预览区域尚未准备完成')
+    }
+    streamRef.current = result.stream
+    video.srcObject = result.stream
+    await video.play()
+    if (video.videoWidth && video.videoHeight) setCameraAspect(video.videoWidth / video.videoHeight)
+    const resolvedFacing = result.facingMode ?? requestedFacing
+    setActiveCameraFacing(resolvedFacing)
+    setAvailableCameraCount(await countVideoInputs(navigator.mediaDevices))
+    return resolvedFacing
   }
 
   const stopSpeech = useCallback(() => {
@@ -208,14 +231,8 @@ function App() {
     setAnalysisMessage('正在请求摄像头权限…')
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('当前浏览器不支持摄像头访问，请使用最新版 Chrome 或 Edge')
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 15, max: 24 } },
-      })
-      streamRef.current = stream
-      if (!cameraRef.current) throw new Error('摄像头预览区域尚未准备完成')
-      cameraRef.current.srcObject = stream; await cameraRef.current.play()
-      if (cameraRef.current.videoWidth && cameraRef.current.videoHeight) setCameraAspect(cameraRef.current.videoWidth / cameraRef.current.videoHeight)
+      const camera = await requestCamera(navigator.mediaDevices, cameraPreference)
+      await attachCamera(camera, cameraPreference)
       const created = await api.startLiveSession()
       sessionRef.current = created; intervalSecondsRef.current = created.analysis_interval_seconds
       statusRef.current = 'monitoring'; setMonitoringStatus('monitoring')
@@ -225,6 +242,41 @@ function App() {
       closeCamera(); sessionRef.current = null; statusRef.current = 'error'; setMonitoringStatus('error')
       setErrorMessage(`无法开启课堂监督：${(error as Error).message}`)
       setAnalysisMessage('请检查摄像头权限、设备占用情况和后端服务')
+    }
+  }
+
+  const switchCamera = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || !streamRef.current || isSwitchingCamera) return
+    const previousFacing = activeCameraFacing ?? cameraPreference
+    const nextFacing: CameraFacingMode = previousFacing === 'environment' ? 'user' : 'environment'
+    const wasMonitoring = statusRef.current === 'monitoring'
+    clearCaptureTimer(); setIsSwitchingCamera(true); setErrorMessage('')
+    setAnalysisMessage(`正在切换到${nextFacing === 'environment' ? '后置' : '前置'}摄像头…`)
+
+    streamRef.current.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+    if (cameraRef.current) cameraRef.current.srcObject = null
+
+    try {
+      const camera = await requestCamera(navigator.mediaDevices, nextFacing)
+      const resolvedFacing = await attachCamera(camera, nextFacing)
+      setCameraPreference(nextFacing)
+      setAnalysisMessage(resolvedFacing === nextFacing
+        ? `已切换到${nextFacing === 'environment' ? '后置' : '前置'}摄像头，课堂监督继续运行`
+        : `设备没有${nextFacing === 'environment' ? '后置' : '前置'}摄像头，已继续使用当前可用摄像头`)
+    } catch (switchError) {
+      try {
+        const restored = await requestCamera(navigator.mediaDevices, previousFacing)
+        await attachCamera(restored, previousFacing)
+        setAnalysisMessage(`无法切换摄像头，已恢复原摄像头：${(switchError as Error).message}`)
+      } catch {
+        closeCamera(); statusRef.current = 'error'; setMonitoringStatus('error')
+        setErrorMessage(`摄像头切换失败：${(switchError as Error).message}`)
+        setAnalysisMessage('请重新开启课堂监督并检查摄像头权限')
+      }
+    } finally {
+      setIsSwitchingCamera(false)
+      if (wasMonitoring && streamRef.current && statusRef.current === 'monitoring') scheduleNextAnalysis(250)
     }
   }
 
@@ -304,7 +356,7 @@ function App() {
       </section>
       <div className="classroom-grid">
         <section className="video-card panel">
-          <div className="panel-heading"><div><span className="eyebrow">实时课堂画面</span><h2>笔记本摄像头</h2></div>
+          <div className="panel-heading"><div><span className="eyebrow">实时课堂画面</span><h2>{activeCameraFacing === 'environment' ? '后置摄像头' : activeCameraFacing === 'user' ? '前置摄像头' : '课堂摄像头'}</h2></div>
             <span className="live-status"><i className={monitoringStatus === 'monitoring' ? 'active' : ''} /> {monitoringStatusText(monitoringStatus)}</span></div>
           <div className="video-stage camera-stage"><div className="camera-frame" style={{ aspectRatio: cameraAspect }}>
             <video ref={cameraRef} autoPlay muted playsInline onLoadedMetadata={(event) => {
@@ -314,16 +366,20 @@ function App() {
               className={`student-marker ${event.severity}`} style={{ left: `${student.rect.x * 100}%`, top: `${student.rect.y * 100}%`, width: `${student.rect.width * 100}%`, height: `${student.rect.height * 100}%` }}>
               <span>{student.label} · {event.behavior}</span></div>))}
             {!streamRef.current && <div className="video-placeholder"><Camera size={42} /><strong>摄像头尚未开启</strong>
-              <span>上传教师照片后，点击“开启课堂监督”<br />浏览器会请求摄像头使用权限</span></div>}
+              <span>手机默认使用后置摄像头，电脑自动使用可用摄像头<br />授权后可随时切换前后摄像头</span></div>}
             {isAnalyzing && <div className="frame-scanner"><i /></div>}
             {currentSpeech && <div className="subtitle"><Volume2 size={18} />{currentSpeech.speech}</div>}
           </div><canvas ref={canvasRef} hidden /></div>
           <div className="class-controls">
             {['idle', 'finished', 'error'].includes(monitoringStatus) && <button className="primary-button" disabled={teacherStatus !== 'idle'} onClick={() => void startMonitoring()}>
               <Camera size={17} />{monitoringStatus === 'finished' ? '开始新的课堂监督' : '开启课堂监督'}</button>}
+            {['idle', 'finished', 'error'].includes(monitoringStatus) && <button className="camera-preference" onClick={() => setCameraPreference((current) => current === 'environment' ? 'user' : 'environment')}>
+              <SwitchCamera size={17} />{cameraPreference === 'environment' ? '后置优先' : '前置优先'}</button>}
             {monitoringStatus === 'requesting' && <button disabled><RefreshCw className="spin" size={17} />连接中</button>}
             {monitoringStatus === 'monitoring' && <button onClick={pauseMonitoring}><Pause size={17} />暂停监督</button>}
             {monitoringStatus === 'paused' && <button className="primary-button" onClick={resumeMonitoring}><Play size={17} />继续监督</button>}
+            {['monitoring', 'paused'].includes(monitoringStatus) && availableCameraCount > 1 && <button disabled={isSwitchingCamera} onClick={() => void switchCamera()}>
+              {isSwitchingCamera ? <RefreshCw className="spin" size={17} /> : <SwitchCamera size={17} />}{isSwitchingCamera ? '切换中' : '切换摄像头'}</button>}
             {['monitoring', 'paused'].includes(monitoringStatus) && <button className="danger-button" onClick={() => void finishMonitoring()}><Square size={15} fill="currentColor" />结束并生成报告</button>}
             {monitoringStatus === 'finishing' && <button disabled><RefreshCw className="spin" size={17} />生成报告中</button>}
             {teacherStatus !== 'idle' && <span className="control-hint">请先上传教师照片</span>}
