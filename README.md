@@ -65,6 +65,12 @@
 
 仓库内置 `.github/workflows/pages.yml`，推送到 `main` 分支后会自动构建并发布前端页面。GitHub Pages 只提供静态网页托管，不能运行本项目的 FastAPI 后端。
 
+后端可以通过仓库根目录的 `render.yaml` 部署到 Render 免费 Web Service：
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ASEpochs/ai-digital-teacher)
+
+创建 Blueprint 时只需填写未同步的 `ARK_API_KEY`。该值保存在 Render 环境变量中，不会写入 GitHub。部署完成后，将 Render 提供的 HTTPS 服务地址配置为 GitHub Actions 变量 `VITE_API_BASE_URL`，再重新运行 Pages 工作流。
+
 要让 Pages 页面具备教师照片上传、豆包课堂画面分析、语音提醒和报告能力，还需要：
 
 1. 将 `backend` 部署到一个支持 Python/FastAPI 的 HTTPS 服务；

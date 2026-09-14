@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: ai-digital-teacher-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FRONTEND_ORIGIN
+        value: https://asepochs.github.io
+      - key: CLASSROOM_ANALYSIS_PROVIDER
+        value: doubao
+      - key: ARK_API_KEY
+        sync: false
+      - key: ARK_BASE_URL
+        value: https://ark.cn-beijing.volces.com/api/v3
+      - key: ARK_VIDEO_MODEL
+        value: doubao-seed-2-0-lite-260215
+      - key: LIVE_ANALYSIS_INTERVAL_SECONDS
+        value: "3"
+      - key: LIVE_ANALYSIS_TIMEOUT_SECONDS
+        value: "45"
+      - key: LIVE_FRAME_MAX_SIZE_MB
+        value: "3"
+      - key: MEDIA_STORE_PROVIDER
+        value: local
+      - key: DIGITAL_HUMAN_PROVIDER
+        value: mock
+      - key: IDLE_VIDEO_PROVIDER
+        value: mock
+      - key: TTS_PROVIDER
+        value: auto

@@ -1,4 +1,5 @@
 from functools import lru_cache
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -11,7 +12,11 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 class Settings(BaseSettings):
     app_env: str = "development"
     frontend_origin: str = "http://localhost:5173"
-    public_base_url: str = "http://localhost:8000"
+    public_base_url: str = (
+        f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}"
+        if os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+        else "http://localhost:8000"
+    )
     max_image_size_mb: int = 8
 
     media_store_provider: Literal["auto", "local", "tos"] = "auto"
