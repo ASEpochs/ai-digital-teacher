@@ -5,6 +5,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { countVideoInputs, requestCamera, type CameraFacingMode, type CameraRequestResult } from './camera'
+import { playAudioSource, primeAudioElement, primeSpeechSynthesis } from './mobileAudio'
 import { buildLocalReport } from './reportFallback'
 import type { BehaviorEvent, ClassroomReport, LiveFrameAnalysis, LiveSession, TeacherAsset, TeacherStatus } from './types'
 
@@ -53,6 +54,7 @@ function App() {
   const allEventsRef = useRef(new Map<string, BehaviorEvent>())
   const speechBusyRef = useRef(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
   const [monitoringStatus, setMonitoringStatus] = useState<MonitoringStatus>('idle')
   const [teacher, setTeacher] = useState<TeacherAsset | null>(null)
@@ -75,6 +77,7 @@ function App() {
   const [activeCameraFacing, setActiveCameraFacing] = useState<CameraFacingMode | null>(null)
   const [availableCameraCount, setAvailableCameraCount] = useState(0)
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false)
+  const [manualSpeech, setManualSpeech] = useState('')
 
   const currentElapsed = useCallback(() => {
     if (statusRef.current !== 'monitoring' || !activeSegmentStartedRef.current) return accumulatedSecondsRef.current
@@ -113,10 +116,11 @@ function App() {
   const stopSpeech = useCallback(() => {
     window.speechSynthesis?.cancel()
     audioRef.current?.pause()
-    audioRef.current = null
+    speechUtteranceRef.current = null
     speechBusyRef.current = false
     setSpeechQueue([])
     setCurrentSpeech(null)
+    setManualSpeech('')
     setTeacherStatus(teacher ? 'idle' : 'empty')
   }, [teacher])
 
@@ -132,23 +136,64 @@ function App() {
     streamRef.current?.getTracks().forEach((track) => track.stop())
     window.speechSynthesis?.cancel()
     audioRef.current?.pause()
+    audioRef.current = null
+    speechUtteranceRef.current = null
   }, [])
 
-  const speakWithBrowser = useCallback((text: string) => new Promise<void>((resolve) => {
-    if (typeof window.speechSynthesis?.speak !== 'function' || typeof SpeechSynthesisUtterance === 'undefined') {
-      globalThis.setTimeout(resolve, Math.max(1600, text.length * 190)); return
+  const unlockAudioPlayback = useCallback(() => {
+    const audio = audioRef.current ?? new Audio()
+    audioRef.current = audio
+    void primeAudioElement(audio)
+
+    const synthesis = window.speechSynthesis
+    if (typeof synthesis?.speak === 'function' && typeof SpeechSynthesisUtterance !== 'undefined') {
+      const primer = new SpeechSynthesisUtterance('\u00a0')
+      speechUtteranceRef.current = primer
+      const release = () => { if (speechUtteranceRef.current === primer) speechUtteranceRef.current = null }
+      primer.onend = release; primer.onerror = release
+      primeSpeechSynthesis(synthesis, primer)
     }
+  }, [])
+
+  const speakWithBrowser = useCallback((text: string) => new Promise<boolean>((resolve) => {
+    const synthesis = window.speechSynthesis
+    if (typeof synthesis?.speak !== 'function' || typeof SpeechSynthesisUtterance === 'undefined') {
+      resolve(false); return
+    }
+
+    let settled = false; let started = false
+    let resumeTimer: ReturnType<typeof globalThis.setTimeout>
+    let startTimer: ReturnType<typeof globalThis.setTimeout>
+    let endTimer: ReturnType<typeof globalThis.setTimeout>
     const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'zh-CN'; utterance.rate = 0.95
-    utterance.onend = () => resolve(); utterance.onerror = () => resolve()
-    window.speechSynthesis.cancel(); window.speechSynthesis.speak(utterance)
+    speechUtteranceRef.current = utterance
+    utterance.lang = 'zh-CN'; utterance.rate = 0.95; utterance.volume = 1
+    const chineseVoice = synthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith('zh'))
+    if (chineseVoice) utterance.voice = chineseVoice
+
+    const finish = (played: boolean) => {
+      if (settled) return
+      settled = true; globalThis.clearTimeout(startTimer); globalThis.clearTimeout(endTimer); globalThis.clearTimeout(resumeTimer)
+      if (speechUtteranceRef.current === utterance) speechUtteranceRef.current = null
+      resolve(played)
+    }
+    utterance.onstart = () => { started = true }
+    utterance.onend = () => finish(true)
+    utterance.onerror = () => finish(false)
+
+    synthesis.cancel(); synthesis.resume(); synthesis.speak(utterance)
+    resumeTimer = globalThis.setTimeout(() => synthesis.resume(), 250)
+    startTimer = globalThis.setTimeout(() => {
+      if (!started && !synthesis.speaking) finish(false)
+    }, 2200)
+    endTimer = globalThis.setTimeout(() => finish(started), Math.max(9000, text.length * 650))
   }), [])
 
-  const playAudioUrl = useCallback((url: string) => new Promise<boolean>((resolve) => {
-    const audio = new Audio(url); audioRef.current = audio
-    audio.onended = () => resolve(true); audio.onerror = () => resolve(false)
-    audio.play().catch(() => resolve(false))
-  }), [])
+  const playAudioUrl = useCallback((url: string) => {
+    const audio = audioRef.current ?? new Audio()
+    audioRef.current = audio
+    return playAudioSource(audio, url)
+  }, [])
 
   const playReminder = useCallback(async (event: BehaviorEvent) => {
     speechBusyRef.current = true; setCurrentSpeech(event); setTeacherStatus('speaking')
@@ -158,13 +203,19 @@ function App() {
       setSpeechNotice(audio.message || '正在播放课堂提醒')
       if (audio.audio_url) {
         const played = await playAudioUrl(audio.audio_url)
-        if (!played) await speakWithBrowser(event.speech)
-      } else await speakWithBrowser(event.speech)
+        if (!played && !await speakWithBrowser(event.speech)) {
+          setManualSpeech(event.speech); setSpeechNotice('手机浏览器阻止了自动语音，请点击“播放当前提醒”')
+        }
+      } else if (!await speakWithBrowser(event.speech)) {
+        setManualSpeech(event.speech); setSpeechNotice('手机浏览器阻止了自动语音，请点击“播放当前提醒”')
+      }
     } catch (error) {
       setSpeechNotice(`云端语音暂不可用，已使用浏览器语音：${(error as Error).message}`)
-      await speakWithBrowser(event.speech)
+      if (!await speakWithBrowser(event.speech)) {
+        setManualSpeech(event.speech); setSpeechNotice('手机浏览器阻止了自动语音，请点击“播放当前提醒”')
+      }
     } finally {
-      audioRef.current = null; speechBusyRef.current = false; setCurrentSpeech(null)
+      speechBusyRef.current = false; setCurrentSpeech(null)
       setTeacherStatus(teacher ? 'idle' : 'empty')
     }
   }, [playAudioUrl, speakWithBrowser, teacher])
@@ -227,7 +278,7 @@ function App() {
 
   const startMonitoring = async () => {
     if (teacherStatus !== 'idle' || statusRef.current === 'requesting') return
-    resetClassroomState(); statusRef.current = 'requesting'; setMonitoringStatus('requesting')
+    resetClassroomState(); unlockAudioPlayback(); statusRef.current = 'requesting'; setMonitoringStatus('requesting')
     setAnalysisMessage('正在请求摄像头权限…')
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('当前浏览器不支持摄像头访问，请使用最新版 Chrome 或 Edge')
@@ -289,6 +340,7 @@ function App() {
 
   const resumeMonitoring = () => {
     if (statusRef.current !== 'paused') return
+    unlockAudioPlayback()
     statusRef.current = 'monitoring'; setMonitoringStatus('monitoring'); activeSegmentStartedRef.current = performance.now()
     setAnalysisMessage('课堂监督已继续，数字教师正在观察课堂画面'); scheduleNextAnalysis(200)
   }
@@ -329,8 +381,19 @@ function App() {
 
   const testTeacherVoice = () => {
     if (!teacher || teacherStatus !== 'idle' || speechBusyRef.current) return
+    unlockAudioPlayback()
     void playReminder({ id: 'voice-preview', time: elapsed, duration: 3, students: [], behavior: '语音测试',
       speech: '同学们，请保持安静，集中注意力，认真完成学习任务。', severity: 'warning' })
+  }
+
+  const playManualSpeech = () => {
+    if (!manualSpeech) return
+    const text = manualSpeech
+    unlockAudioPlayback(); setManualSpeech(''); setSpeechNotice('正在播放课堂提醒…')
+    void speakWithBrowser(text).then((played) => {
+      setSpeechNotice(played ? '课堂提醒播放完成' : '仍无法播放，请检查手机媒体音量和浏览器语音设置')
+      if (!played) setManualSpeech(text)
+    })
   }
 
   const visibleStudents = new Set(activeEvents.flatMap((event) => event.students.map((student) => student.id))).size
@@ -380,6 +443,7 @@ function App() {
             {monitoringStatus === 'paused' && <button className="primary-button" onClick={resumeMonitoring}><Play size={17} />继续监督</button>}
             {['monitoring', 'paused'].includes(monitoringStatus) && availableCameraCount > 1 && <button disabled={isSwitchingCamera} onClick={() => void switchCamera()}>
               {isSwitchingCamera ? <RefreshCw className="spin" size={17} /> : <SwitchCamera size={17} />}{isSwitchingCamera ? '切换中' : '切换摄像头'}</button>}
+            {manualSpeech && <button className="speech-retry-button" onClick={playManualSpeech}><Volume2 size={17} />播放当前提醒</button>}
             {['monitoring', 'paused'].includes(monitoringStatus) && <button className="danger-button" onClick={() => void finishMonitoring()}><Square size={15} fill="currentColor" />结束并生成报告</button>}
             {monitoringStatus === 'finishing' && <button disabled><RefreshCw className="spin" size={17} />生成报告中</button>}
             {teacherStatus !== 'idle' && <span className="control-hint">请先上传教师照片</span>}

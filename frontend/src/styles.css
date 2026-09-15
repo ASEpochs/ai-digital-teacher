@@ -71,6 +71,7 @@ button:disabled { cursor: not-allowed; opacity: .48; }
 .class-controls button { height: 38px; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; color: #345269; background: #f6f8fa; border: 1px solid #d8e2e9; border-radius: 7px; font-size: 12px; font-weight: 600; }
 .class-controls .primary-button { color: #fff; background: #137d70; border-color: #137d70; }
 .class-controls .danger-button { color: #a33f35; background: #fff2ef; border-color: #f0c8c2; }
+.class-controls .speech-retry-button { color: #704e08; background: #fff4c9; border-color: #e4bd53; }
 .control-hint { margin-left: auto; color: #8a9dab; font-size: 11px; }
 .privacy-hint { margin-left: auto; display: flex; align-items: center; gap: 5px; color: #7d929f; font-size: 10px; }
 
