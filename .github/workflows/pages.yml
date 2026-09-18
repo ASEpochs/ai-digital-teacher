@@ -33,10 +33,11 @@ jobs:
         run: npm ci
 
       - name: Build frontend
+        # Publish only after the camera, audio and workspace regression checks pass.
         working-directory: frontend
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
-        run: npm run build
+        run: npm test && npm run build
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
