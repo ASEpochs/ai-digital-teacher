@@ -1,5 +1,12 @@
 {
   "name": "ai-digital-teacher-supervision",
+  "description": "ASEpochs 的多模态课堂观察 AI Agent",
+  "author": "ASEpochs",
+  "homepage": "https://asepochs.github.io/ai-digital-teacher/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ASEpochs/ai-digital-teacher.git"
+  },
   "private": true,
   "scripts": {
     "dev": "concurrently -k -n backend,frontend -c blue,green \".venv\\Scripts\\python.exe -m uvicorn backend.app.main:app --reload --reload-dir backend --reload-dir data --port 8000\" \"npm --prefix frontend run dev -- --port 5173 --strictPort\"",
