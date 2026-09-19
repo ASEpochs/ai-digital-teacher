@@ -1,26 +1,47 @@
-# AI Digital Teacher Agent｜多模态课堂观察智能体
+<div align="center">
 
-> ASEpochs 独立设计与实现的 AI Agent 工程作品：让浏览器摄像头成为课堂感知入口，由多模态模型持续完成观察、推理、状态记忆、异常决策、语音干预与课后复盘。
+<img src="./frontend/public/favicon.svg" width="88" alt="AI Digital Teacher Agent 图标">
 
-<p align="center">
+# AI Digital Teacher Agent
+
+### 多模态课堂观察智能体
+
+**让浏览器摄像头成为课堂感知入口，持续完成观察、推理、记忆、决策、干预与复盘。**
+
+<p>
   <a href="https://asepochs.github.io/ai-digital-teacher/"><strong>▶ 在线体验：直接打开 AI 数字教师系统</strong></a>
 </p>
 
-<p align="center">
-  无需安装 · 支持电脑与手机摄像头 · 建议使用 Chrome / Edge / Safari
-</p>
+<p>无需注册 · 无需安装 · 支持电脑与手机摄像头</p>
 
-<p align="center">
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Online-15967d?style=for-the-badge)](https://asepochs.github.io/ai-digital-teacher/)
+[![Pages CI](https://github.com/ASEpochs/ai-digital-teacher/actions/workflows/pages.yml/badge.svg)](https://github.com/ASEpochs/ai-digital-teacher/actions/workflows/pages.yml)
+[![React](https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Render](https://img.shields.io/badge/Render_API-Deployed-6b5fd3?style=flat-square&logo=render&logoColor=white)](https://ai-digital-teacher-api.onrender.com/api/health)
+
+<p>
+  <a href="./README.md">中文</a>
+  ·
   <a href="./README_EN.md">English</a>
   ·
   <a href="./docs/AGENT_ARCHITECTURE.md">Agent 架构设计</a>
   ·
+  <a href="./docs/PORTFOLIO_GUIDE.md">面试展示指南</a>
+  ·
   <a href="./docs/UI_REDESIGN.md">UI/UX 设计说明</a>
 </p>
 
+</div>
+
 ---
 
-## 项目简介
+> **给面试官 / 导师的 3 分钟体验建议：** 打开[在线系统](https://asepochs.github.io/ai-digital-teacher/)，进入“实时课堂”上传一张非敏感人物照片作为监督员形象，允许摄像头访问后开始观察；分别展示正常学习状态与需要关注的行为，检查检测框、异常语音和事件时间轴，最后结束课堂查看逐人报告。Render 免费后端首次唤醒可能需要约一分钟。
+
+![AI Digital Teacher Agent 课堂工作台](docs/dashboard-preview.png)
+
+## ✨ 项目简介
 
 AI Digital Teacher Agent 是一个面向智慧课堂场景的多模态观察与辅助分析系统。它通过摄像头周期性获取课堂画面，调用豆包视觉模型理解学生状态，并维护一段课堂会话中的学生位置、行为变化和提醒记录。
 
@@ -35,7 +56,20 @@ AI Digital Teacher Agent 是一个面向智慧课堂场景的多模态观察与�
 - 可行动：执行画面标注、语音提醒、时间轴记录和报告生成；
 - 可降级：云端语音不可用时回退到浏览器原生语音。
 
-## Agent 工作闭环
+## 🎯 一眼看懂项目
+
+| 维度 | 当前实现 |
+| --- | --- |
+| 产品 | 面向学校管理人员、教学督导和教师的课堂观察工作台 |
+| Agent | 感知、推理、短期记忆、提醒策略、工具行动、课后复盘完整闭环 |
+| 模型 | 豆包 Seed 多模态模型，经 Ark Responses API 分析摄像头帧 |
+| 状态 | 基于座位位置保持跨帧连续性，合并相同行为并追踪持续时间 |
+| 干预 | 正常状态静默记录；新异常事件进入 TTS 队列，避免连续重复提醒 |
+| 多端 | 手机后置摄像头、电脑摄像头、移动端音频解锁与响应式界面 |
+| 工程验证 | 20 项前端测试、21 项后端测试、生产构建与 GitHub Pages CI |
+| 部署 | GitHub Pages 静态前端 + Render FastAPI 服务，密钥仅保留在后端 |
+
+## 🧠 Agent 工作闭环
 
 ```mermaid
 flowchart LR
@@ -63,7 +97,7 @@ flowchart LR
 
 更完整的状态流、接口契约和设计取舍见 [Agent 架构设计](./docs/AGENT_ARCHITECTURE.md)。
 
-## 核心产品能力
+## 🧩 核心产品能力
 
 ### 实时课堂
 
@@ -92,7 +126,7 @@ flowchart LR
 - 课堂结束后生成学生维度的行为摘要和提醒记录；
 - 最近 30 份课堂报告保存在浏览器本地，刷新页面后仍可回看。
 
-## 系统架构
+## 🏗️ 系统架构
 
 ```mermaid
 flowchart TB
@@ -129,18 +163,18 @@ flowchart TB
 
 安全边界上，浏览器只访问项目后端，不接触 `ARK_API_KEY` 等服务端密钥。GitHub Pages 承载静态前端，Render 承载 FastAPI 服务。
 
-## 页面信息架构
+## 🖥️ 页面信息架构
 
 | 页面 | 解决的问题 |
 | --- | --- |
-| 工作台 | 快速判断系统状态、当前会话、专注度和近期异常 |
+| 工作台 | 快速判断系统状态、当前会话、正常记录占比和近期异常 |
 | 实时课堂 | 启动摄像头监督，查看 AI 识别、提醒和事件时间轴 |
-| AI 课堂分析 | 查看行为分布、专注趋势和学生维度分析 |
+| AI 课堂分析 | 查看行为分布、正常记录占比和学生维度分析 |
 | 异常事件 | 集中筛选和复盘需要关注的课堂行为 |
 | 历史课堂 | 回看已结束课堂的报告与事件明细 |
 | 系统设置 | 检查后端、视觉模型、语音能力和运行配置 |
 
-## 我的设计与实现
+## 👨‍💻 我的设计与实现
 
 这是 ASEpochs 的个人项目，覆盖了从产品定义到线上部署的完整链路：
 
@@ -152,7 +186,7 @@ flowchart TB
 - 安全与韧性：密钥仅保留在服务端，并为视觉分析与语音服务设计显式降级路径；
 - 质量保障：前后端自动化测试、生产构建检查、GitHub Actions 与 Render 持续部署。
 
-## 技术栈
+## 🛠️ 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
@@ -164,17 +198,44 @@ flowchart TB
 | Test | Vitest、Testing Library、Pytest |
 | Deploy | GitHub Pages、GitHub Actions、Render Blueprint |
 
-## 快速体验
+## 🚀 在线体验路线
 
-1. 打开 [线上系统](https://asepochs.github.io/ai-digital-teacher/)；
-2. 进入“实时课堂”，上传一张教师形象图片；
-3. 点击“开始监督”并允许浏览器访问摄像头和音频；
-4. 将摄像头对准测试对象，观察 AI 检测框、事件流和异常语音提醒；
-5. 点击“结束并生成报告”，到历史课堂查看完整记录。
+### 路线 A：观察完整 Agent 闭环
+
+1. 打开[线上系统](https://asepochs.github.io/ai-digital-teacher/)，进入“实时课堂”；
+2. 上传一张非敏感人物照片作为监督员形象；
+3. 允许摄像头访问并开始观察；
+4. 查看画面采样、结构化识别、事件合并和异常语音提醒；
+5. 结束课堂，在“AI 课堂分析”查看逐人报告与事件时间轴。
+
+### 路线 B：验证移动端适配
+
+1. 使用手机打开在线系统，授权后置摄像头和音频播放；
+2. 在实时课堂切换前后镜头；
+3. 触发一条测试语音或等待异常事件，检查移动端声音与手动播放降级按钮。
+
+### 路线 C：检查数据口径
+
+1. 完成一段包含正常与异常状态的课堂观察；
+2. 对照“事件中心”与“AI 课堂分析”的事件数量；
+3. 进入“历史课堂”刷新页面，验证本机报告保留与 JSON 导出。
 
 > Render 免费实例空闲后可能休眠。首次请求若较慢，请等待约一分钟并重试。线上体验会调用真实多模态模型，请勿上传敏感或未经授权的影像。
 
-## 本地运行
+## 🧭 关键代码导航
+
+| 模块 | 代码入口 |
+| --- | --- |
+| 实时课堂状态与 Agent 行动队列 | [`frontend/src/hooks/useClassroom.ts`](frontend/src/hooks/useClassroom.ts) |
+| 前后摄像头请求与降级 | [`frontend/src/camera.ts`](frontend/src/camera.ts) |
+| 移动端音频解锁与播放 | [`frontend/src/mobileAudio.ts`](frontend/src/mobileAudio.ts) |
+| FastAPI 路由与 Provider 装配 | [`backend/app/main.py`](backend/app/main.py) |
+| 豆包多模态推理与结构化校验 | [`backend/app/services/classroom_analysis.py`](backend/app/services/classroom_analysis.py) |
+| 跨帧座位记忆与事件合并 | [`backend/app/services/live_sessions.py`](backend/app/services/live_sessions.py) |
+| 确定性课堂报告 | [`backend/app/services/reports.py`](backend/app/services/reports.py) |
+| GitHub Pages 持续部署 | [`.github/workflows/pages.yml`](.github/workflows/pages.yml) |
+
+## 💻 本地运行
 
 环境要求：Node.js 20+、Python 3.11+。
 
@@ -235,7 +296,7 @@ DOUBAO_TTS_VOICE=your_voice_type
 
 未配置豆包 TTS 时，系统会回退到浏览器 Speech Synthesis。完整变量参考 [.env.example](./.env.example)。
 
-## API 概览
+## 🔌 API 概览
 
 | 方法 | 路径 | 作用 |
 | --- | --- | --- |
@@ -246,7 +307,7 @@ DOUBAO_TTS_VOICE=your_voice_type
 | `POST` | `/api/teacher` | 上传并创建数字课堂监督员形象 |
 | `GET` | `/api/health` | 查询后端及当前 Provider 状态 |
 
-## 测试与构建
+## ✅ 测试与构建
 
 ```bash
 npm test
@@ -255,7 +316,7 @@ npm run build
 
 GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 根据 [render.yaml](./render.yaml) 构建后端。
 
-## 项目结构
+## 📁 项目结构
 
 ```text
 .
@@ -269,12 +330,13 @@ GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 
 │  └─ tests/                # 后端测试
 ├─ docs/
 │  ├─ AGENT_ARCHITECTURE.md # Agent 状态流与设计取舍
+│  ├─ PORTFOLIO_GUIDE.md    # 求职 / 申博 / 面试展示路线
 │  └─ UI_REDESIGN.md        # UI/UX 重构说明
 ├─ .github/workflows/       # GitHub Pages CI/CD
 └─ render.yaml              # Render Blueprint
 ```
 
-## 当前边界与负责任使用
+## 🛡️ 当前边界与负责任使用
 
 - 这是可运行的个人工程作品，不是用于自动处分学生的生产级决策系统；
 - 视觉模型可能误判，识别结果应由教师或督导人员复核；
@@ -282,13 +344,20 @@ GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 
 - 当前会话状态保存在单个后端实例内，历史报告保存在当前浏览器，不支持账号、多设备同步和长期数据库存储；
 - 在真实课堂采集影像前，应取得必要授权，并遵守学校制度与当地隐私法规。
 
-## 下一步
+## 🗺️ 下一步
 
 - 引入 PostgreSQL、对象存储和学校/班级/角色权限模型；
 - 增加人工反馈闭环与可量化评测集，持续评估误报和漏报；
 - 使用 WebSocket / WebRTC 提升实时性，并支持多教室并发；
 - 将规则策略升级为可配置的课堂干预策略；
 - 增加可观测性、审计日志和隐私脱敏能力。
+
+## 📚 文档
+
+- [English README](./README_EN.md)
+- [Agent 架构设计](./docs/AGENT_ARCHITECTURE.md)
+- [面试展示与项目讲解](./docs/PORTFOLIO_GUIDE.md)
+- [UI/UX 重构说明](./docs/UI_REDESIGN.md)
 
 ---
 
@@ -297,3 +366,5 @@ GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 
 **Repository:** [github.com/ASEpochs/ai-digital-teacher](https://github.com/ASEpochs/ai-digital-teacher)
 
 **Live Demo:** [asepochs.github.io/ai-digital-teacher](https://asepochs.github.io/ai-digital-teacher/)
+
+如果这个项目对你理解多模态 Agent 工程有所帮助，欢迎 Star 或提出 Issue。
