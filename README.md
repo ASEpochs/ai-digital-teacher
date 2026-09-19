@@ -28,8 +28,6 @@
   ·
   <a href="./docs/AGENT_ARCHITECTURE.md">Agent 架构设计</a>
   ·
-  <a href="./docs/PORTFOLIO_GUIDE.md">面试展示指南</a>
-  ·
   <a href="./docs/UI_REDESIGN.md">UI/UX 设计说明</a>
 </p>
 
@@ -37,7 +35,7 @@
 
 ---
 
-> **给面试官 / 导师的 3 分钟体验建议：** 打开[在线系统](https://asepochs.github.io/ai-digital-teacher/)，进入“实时课堂”上传一张非敏感人物照片作为监督员形象，允许摄像头访问后开始观察；分别展示正常学习状态与需要关注的行为，检查检测框、异常语音和事件时间轴，最后结束课堂查看逐人报告。Render 免费后端首次唤醒可能需要约一分钟。
+> **首次使用建议：** 打开[在线系统](https://asepochs.github.io/ai-digital-teacher/)，进入“实时课堂”上传一张非敏感人物照片作为监督员形象，允许摄像头访问后开始观察；系统会持续展示识别框、行为事件和异常语音提醒。结束课堂后可在“AI 课堂分析”查看逐人报告。Render 免费后端首次唤醒可能需要约一分钟。
 
 ![AI Digital Teacher Agent 课堂工作台](docs/dashboard-preview.png)
 
@@ -174,9 +172,9 @@ flowchart TB
 | 历史课堂 | 回看已结束课堂的报告与事件明细 |
 | 系统设置 | 检查后端、视觉模型、语音能力和运行配置 |
 
-## 👨‍💻 我的设计与实现
+## ⚙️ 设计与实现要点
 
-这是 ASEpochs 的个人项目，覆盖了从产品定义到线上部署的完整链路：
+项目覆盖了从产品定义到线上部署的完整链路：
 
 - 产品设计：把原始摄像头识别 Demo 重构为面向学校管理、教学督导和教师的工作台；
 - Agent 设计：定义“感知—推理—记忆—决策—行动—复盘”闭环和结构化输出协议；
@@ -330,7 +328,6 @@ GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 
 │  └─ tests/                # 后端测试
 ├─ docs/
 │  ├─ AGENT_ARCHITECTURE.md # Agent 状态流与设计取舍
-│  ├─ PORTFOLIO_GUIDE.md    # 求职 / 申博 / 面试展示路线
 │  └─ UI_REDESIGN.md        # UI/UX 重构说明
 ├─ .github/workflows/       # GitHub Pages CI/CD
 └─ render.yaml              # Render Blueprint
@@ -338,7 +335,7 @@ GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 
 
 ## 🛡️ 当前边界与负责任使用
 
-- 这是可运行的个人工程作品，不是用于自动处分学生的生产级决策系统；
+- 这是可运行的工程原型，不是用于自动处分学生的生产级决策系统；
 - 视觉模型可能误判，识别结果应由教师或督导人员复核；
 - 系统不做人脸识别，也不根据画面推断姓名、身份或敏感属性；
 - 当前会话状态保存在单个后端实例内，历史报告保存在当前浏览器，不支持账号、多设备同步和长期数据库存储；
@@ -356,7 +353,6 @@ GitHub Pages 工作流会在部署前执行前端测试和生产构建；Render 
 
 - [English README](./README_EN.md)
 - [Agent 架构设计](./docs/AGENT_ARCHITECTURE.md)
-- [面试展示与项目讲解](./docs/PORTFOLIO_GUIDE.md)
 - [UI/UX 重构说明](./docs/UI_REDESIGN.md)
 
 ---

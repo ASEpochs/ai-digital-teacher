@@ -28,8 +28,6 @@
   ·
   <a href="./docs/AGENT_ARCHITECTURE.md">Agent Architecture</a>
   ·
-  <a href="./docs/PORTFOLIO_GUIDE.md">Portfolio Guide</a>
-  ·
   <a href="./docs/UI_REDESIGN.md">UI/UX Notes</a>
 </p>
 
@@ -37,7 +35,7 @@
 
 ---
 
-> **Three-minute path for interviewers and research reviewers:** open the [live system](https://asepochs.github.io/ai-digital-teacher/), enter Live Classroom, upload a non-sensitive portrait as the supervisor avatar, and grant camera access. Show a normal learning state and an observable off-task behavior, inspect annotations, voice intervention, and the event timeline, then finish the session to review the per-student report. The free Render API may take about one minute to wake up.
+> **First-time use:** open the [live system](https://asepochs.github.io/ai-digital-teacher/), enter Live Classroom, upload a non-sensitive portrait as the supervisor avatar, and grant camera access. The system will continuously display annotations, behavior events, and anomaly voice reminders. Finish the session to review the per-student report in AI Analysis. The free Render API may take about one minute to wake up.
 
 ![AI Digital Teacher Agent dashboard](docs/dashboard-preview.png)
 
@@ -111,9 +109,9 @@ flowchart TB
 
 The static frontend is deployed on GitHub Pages, while the FastAPI service runs on Render. AI credentials remain on the server and are never exposed to the browser.
 
-## 👨‍💻 My contribution
+## ⚙️ Implementation highlights
 
-This is a personal end-to-end project by ASEpochs:
+The project covers the complete path from product definition to online deployment:
 
 - Product definition and information architecture for school administrators, supervisors, and teachers;
 - Agent loop, structured model contract, session state, event merging, and reminder policy;
@@ -203,7 +201,7 @@ npm run build
 
 ## 🛡️ Responsible-use boundaries
 
-- This is a working portfolio project, not a production system for automated disciplinary decisions.
+- This is a working engineering prototype, not a production system for automated disciplinary decisions.
 - Multimodal model outputs can be wrong and must remain subject to human review.
 - The system does not perform face recognition or infer names, identities, or sensitive attributes.
 - Session state currently lives in one backend instance, and recent reports are stored in the local browser.
@@ -213,7 +211,6 @@ npm run build
 
 - [Chinese README](./README.md)
 - [Agent architecture and runtime decisions](./docs/AGENT_ARCHITECTURE.md)
-- [Portfolio and interview guide](./docs/PORTFOLIO_GUIDE.md)
 - [UI/UX redesign notes](./docs/UI_REDESIGN.md)
 
 ---
