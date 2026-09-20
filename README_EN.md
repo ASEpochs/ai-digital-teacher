@@ -62,7 +62,7 @@ This project implements that workflow as a vertical AI Agent:
 | State | Position-based cross-frame continuity, event merging, and duration tracking |
 | Intervention | Normal states are logged silently; new anomalies enter a deduplicated TTS queue |
 | Devices | Rear mobile camera, desktop webcams, mobile audio unlocking, responsive UI |
-| Verification | 20 frontend tests, 21 backend tests, production build, and GitHub Pages CI |
+| Verification | 23 frontend tests, 21 backend tests, production build, and GitHub Pages CI |
 | Deployment | GitHub Pages frontend + Render FastAPI backend; credentials remain server-side |
 
 ## 🧠 Agent loop

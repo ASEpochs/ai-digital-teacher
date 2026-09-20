@@ -1,26 +1,84 @@
-import { Activity, ArrowRight, BookOpen, CheckCircle2, Clock3, MonitorPlay, Plus, ScanLine, TriangleAlert } from 'lucide-react'
+import { ArrowRight, Camera, Check, ClipboardList, MonitorPlay } from 'lucide-react'
 import type { ClassroomController } from '../hooks/useClassroom'
-import { formatTime, normalRatio, reportEvents, statusText, type ArchivedClass, type Page, type WorkspaceSettings } from '../platform'
+import { formatDate, formatTime, normalRatio, reportEvents, statusText, type ArchivedClass, type Page, type WorkspaceSettings } from '../platform'
 import { Badge, Metric, Panel, TextAction } from './ui'
-import { EventList } from './EventList'
+import { ServiceHealth, type VisionStatus } from './ServiceHealth'
+import type { ServiceStatus } from './SettingsPage'
 
-export function Dashboard({ classroom: c, history, settings, navigate }: { classroom: ClassroomController; history: ArchivedClass[]; settings: WorkspaceSettings; navigate: (p: Page) => void }) {
+interface DashboardProps {
+  classroom: ClassroomController
+  history: ArchivedClass[]
+  settings: WorkspaceSettings
+  navigate: (p: Page) => void
+  service: ServiceStatus
+  vision: VisionStatus
+  refresh: () => void
+}
+
+export function Dashboard({ classroom: c, history, settings, navigate, service, vision, refresh }: DashboardProps) {
   const active = ['monitoring', 'paused', 'requesting', 'finishing'].includes(c.monitoringStatus)
   const today = new Date().toDateString()
   const records = history.filter(row => new Date(row.startedAt).toDateString() === today)
   const events = c.logs.map(l => l.event)
-  const alerts = records.reduce((total, row) => total + reportEvents(row.report).filter(e => e.severity !== 'info').length, 0) + (active ? c.alertCount : 0)
   const ratio = normalRatio(events)
-  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return { label: `${d.getMonth() + 1}/${d.getDate()}`, count: history.filter(h => new Date(h.startedAt).toDateString() === d.toDateString()).length } })
-  const max = Math.max(3, ...days.map(d => d.count))
-  return <>
-    <section className="welcome-panel"><div><span className="eyebrow">CLASSROOM INSIGHTS</span><h2>看见课堂，让教学更有温度。</h2><p>从一次真实的课堂观察开始，连接实时画面、行为记录与教学复盘。</p><button className="button primary" onClick={() => navigate('live')}><MonitorPlay size={17} />{active ? '返回实时课堂' : '开始课堂观察'}<ArrowRight size={16} /></button></div><div className="welcome-graphic" aria-hidden="true"><div className="graphic-window"><div className="graphic-dots"><i /><i /><i /><span>CLASSROOM / LIVE</span></div><div className="graphic-board"><BookOpen size={27} /><span>LEARNING IN FOCUS</span></div><div className="graphic-seats">{Array.from({ length: 6 }, (_, i) => <span key={i}><i /><b /></span>)}</div><span className="graphic-scan" /></div><span className="graphic-note"><ScanLine size={16} />AI 辅助课堂观察</span></div></section>
-    <div className="section-caption"><h2>今日教学概览</h2><span>当前浏览器的课堂记录 · 非全校统计</span></div>
-    <div className="metrics-grid"><Metric label="今日课堂" value={records.length + (active ? 1 : 0)} unit="节" note="已结束课堂 + 当前会话" icon={BookOpen} /><Metric label="正在观察" value={c.monitoringStatus === 'monitoring' ? 1 : 0} unit="节" note={active ? `${settings.classroom} · ${statusText(c.monitoringStatus)}` : '等待开启本机摄像头'} icon={MonitorPlay} accent="mint" /><Metric label="AI 分析画面" value={records.reduce((s, h) => s + h.sampleCount, 0) + (active ? c.sampleCount : 0)} unit="次" note="今日会话累计分析次数" icon={ScanLine} /><Metric label="异常事件" value={alerts} unit="项" note="需要人工关注与复核" icon={TriangleAlert} accent="amber" /></div>
-    <div className="dashboard-grid"><Panel title="课堂观察趋势" subtitle="近 7 天 · 已结束课堂数量" action={<Badge>本机记录</Badge>}><div className="bar-chart" role="img" aria-label={days.map(d => `${d.label}：${d.count}节`).join('，')}><div className="chart-grid"><span>{max}</span><span>{Math.ceil(max / 2)}</span><span>0</span></div><div className="chart-columns">{days.map((d, i) => <div key={d.label}><span className="bar-value">{d.count || ''}</span><div className="bar-track"><i className={i === 6 ? 'today' : ''} style={{ height: `${d.count / max * 100}%` }} /></div><small>{d.label}</small></div>)}</div>{!history.length && <div className="chart-empty"><Activity size={18} /><span>完成首次观察，积累教学记录</span></div>}</div><div className="chart-foot"><i />已结束课堂<span>历史记录留在当前浏览器</span></div></Panel>
-      <Panel title="学生行为概览" subtitle="当前课堂 · 识别结果分布"><div className="distribution"><div className="donut" style={{ '--ratio': `${ratio ?? 0}%` } as React.CSSProperties}><div><strong>{ratio === null ? '—' : `${ratio}%`}</strong><span>正常记录占比</span></div></div><div className="distribution-legend"><span><i className="mint-dot" />正常状态<strong>{events.filter(e => e.severity === 'info').length}</strong></span><span><i className="amber-dot" />异常行为<strong>{c.alertCount}</strong></span></div></div><p className="metric-footnote">按事件条数统计，不代表学生专注度评分。AI 结果需结合课堂实际复核。</p></Panel>
+  const latest = history[0]
+  const distribution = active ? events : latest ? reportEvents(latest.report) : []
+  const normalCount = distribution.filter(event => event.severity === 'info').length
+  const steps = [
+    { title: '设置课堂信息', text: '学校、教室、课程与观察员', done: settings.school !== '我的学校', target: 'settings' as Page },
+    { title: '上传监督员照片', text: '在实时课堂设置提醒形象', done: Boolean(c.teacher), target: 'live' as Page },
+    { title: '检查摄像头和声音', text: '选择镜头，测试语音提醒', done: false, target: 'live' as Page },
+    { title: '开始课堂观察', text: '允许摄像头访问后开始记录', done: active, target: 'live' as Page },
+  ]
+
+  return <div className="dashboard">
+    <section className="classroom-brief" aria-label="当前课堂">
+      <div className="brief-heading"><div><span className="field-label">{settings.school}</span><h2>{settings.classroom}<span>{settings.course}</span></h2><p>观察员：{settings.observer}</p></div>
+        <Badge tone={active ? 'success' : 'neutral'}>{active ? statusText(c.monitoringStatus) : '尚未开始观察'}</Badge>
+      </div>
+      <div className="brief-actions">
+        <button className="button primary" onClick={() => navigate('live')}><MonitorPlay size={17} />{active ? '返回实时课堂' : '开始课堂观察'}<ArrowRight size={16} /></button>
+        <button className="text-button" onClick={() => navigate('settings')}>编辑课堂信息</button>
+        {active && <span className="session-duration">已观察 <strong className="mono">{formatTime(c.elapsed)}</strong></span>}
+        {!active && <span className="brief-hint">进入实时课堂后检查设备并开始</span>}
+      </div>
+      <ServiceHealth status={service} vision={vision} refresh={refresh} />
+    </section>
+
+    {!history.length && !active && <section className="preparation" aria-labelledby="preparation-title">
+      <div className="section-caption"><h2 id="preparation-title">首次使用准备</h2><span>完成准备后即可开始记录</span></div>
+      <ol className="preparation-steps">{steps.map((step, i) => <li key={step.title}>
+        <button onClick={() => navigate(step.target)}><span className={step.done ? 'step-number done' : 'step-number'}>{step.done ? <Check size={17} /> : i + 1}</span><span><strong>{step.title}</strong><small>{step.text}</small></span><ArrowRight size={15} /></button>
+      </li>)}</ol>
+    </section>}
+
+    {(history.length > 0 || active) && <>
+      <div className="section-caption"><h2>今日观察记录</h2><span>仅统计本机课堂</span></div>
+      <div className="metrics-grid">
+        <Metric label="课堂会话" value={records.length + (active ? 1 : 0)} unit="节" note="已结束课堂与当前会话" />
+        <Metric label="分析画面" value={records.reduce((sum, row) => sum + row.sampleCount, 0) + (active ? c.sampleCount : 0)} unit="次" note="包含成功与未完成的分析尝试" />
+        <Metric label="异常记录" value={records.reduce((sum, row) => sum + reportEvents(row.report).filter(e => e.severity !== 'info').length, 0) + (active ? c.alertCount : 0)} unit="项" note="等待人工结合课堂情况复核" accent="amber" />
+      </div>
+    </>}
+
+    <div className="dashboard-columns">
+      <Panel title={active ? '当前课堂记录' : '最近一次课堂'} action={<TextAction onClick={() => navigate(active ? 'events' : 'history')}>{active ? '查看事件' : '查看历史'}</TextAction>}>
+        {active ? <div className="current-session"><div className="record-title"><Camera size={20} /><strong>{settings.classroom}</strong><Badge tone="success">{statusText(c.monitoringStatus)}</Badge></div>
+          <dl className="record-facts"><div><dt>观察时长</dt><dd className="mono">{formatTime(c.elapsed)}</dd></div><div><dt>行为记录</dt><dd>{events.length} 条</dd></div><div><dt>正常记录占比</dt><dd>{ratio === null ? '尚无记录' : ratio + '%'}</dd></div></dl>
+          <p className="muted">{c.analysisMessage}</p>
+        </div> : latest ? <div className="recent-record"><div className="record-title"><ClipboardList size={20} /><strong>{latest.context.classroom} · {latest.context.course}</strong><Badge>已结束</Badge></div><p>{formatDate(latest.startedAt)} · {latest.context.observer}</p><dl className="record-facts"><div><dt>观察时长</dt><dd className="mono">{formatTime(latest.elapsed)}</dd></div><div><dt>分析画面</dt><dd>{latest.sampleCount} 次</dd></div><div><dt>行为记录</dt><dd>{latest.report.total_events} 条</dd></div></dl></div>
+        : <div className="record-empty"><ClipboardList size={24} /><div><strong>还没有已结束的课堂</strong><p>完成一次观察后，这里会显示最近的课堂和报告入口。</p></div></div>}
+        {distribution.length > 0 && <div className="behavior-summary">
+          <div><span>正常状态 {normalCount} 条</span><span>异常记录 {distribution.length - normalCount} 条</span></div>
+          <div className="behavior-meter" role="img" aria-label={`正常 ${normalCount} 条，异常 ${distribution.length - normalCount} 条`}><i style={{ width: `${normalCount / distribution.length * 100}%` }} /></div>
+          <small>{active ? '当前课堂' : '最近课堂'} · 按事件条数统计</small>
+        </div>}
+      </Panel>
+      <section className="operating-notes"><h2>观察与记录说明</h2><dl>
+        <div><dt>正常学习</dt><dd>记录在时间轴中，不进行语音播报。</dd></div>
+        <div><dt>需要关注</dt><dd>进入语音提醒流程，可在事件中心回看。</dd></div>
+        <div><dt>结束课堂</dt><dd>关闭摄像头并生成报告，保存到本机历史。</dd></div>
+      </dl><p>正常记录占比按事件条数计算，不代表学生专注度评分。</p></section>
     </div>
-    <div className="dashboard-grid lower"><Panel title="实时课堂" subtitle="当前设备摄像头接入" action={<TextAction onClick={() => navigate('live')}>进入课堂</TextAction>}><div className="classroom-list-row"><span className="room-icon"><MonitorPlay size={24} /></span><div><h3>{settings.classroom}</h3><p>{settings.course} · {settings.observer}</p></div><Badge tone={active ? 'success' : 'neutral'}>{statusText(c.monitoringStatus)}</Badge></div><div className="room-details"><span><Clock3 size={15} />观察时长 <strong>{formatTime(c.elapsed)}</strong></span><span><ScanLine size={15} />分析 <strong>{c.sampleCount} 次</strong></span><button className="text-button" onClick={() => navigate('settings')}>编辑课堂<ArrowRight size={14} /></button></div><div className="setup-checklist">{[['01', '设置课堂信息', settings.school !== '我的学校', 'settings'], ['02', '上传监督员照片', Boolean(c.teacher), 'live'], ['03', '开启课堂观察', active || c.monitoringStatus === 'finished', 'live']].map(([n, label, done, target]) => <button key={String(n)} onClick={() => navigate(target as Page)}><span className={done ? 'done' : ''}>{done ? <CheckCircle2 size={16} /> : n}</span>{label}<ArrowRight size={14} /></button>)}</div></Panel><Panel title="最近异常事件" subtitle="当前课堂中需要关注的行为" action={<TextAction onClick={() => navigate('events')}>全部记录</TextAction>}><EventList events={events.filter(e => e.severity !== 'info').slice(0, 3)} compact /></Panel></div>
-    {!history.length && <div className="onboarding-note"><Plus size={18} /><span>结束课堂后将自动生成逐人行为报告，并保存在「历史课堂」。</span><button className="text-button" onClick={() => navigate('history')}>查看历史<ArrowRight size={14} /></button></div>}
-  </>
+  </div>
 }
