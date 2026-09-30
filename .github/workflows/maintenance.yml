@@ -1,0 +1,67 @@
+name: Repository maintenance check
+
+on:
+  schedule:
+    # Runs daily at 11:23 in China Standard Time (03:23 UTC).
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repository-maintenance
+  cancel-in-progress: false
+
+jobs:
+  verify-and-record:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Record successful maintenance check
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          git pull --rebase origin main
+          checked_at="$(date -u '+%Y-%m-%d %H:%M UTC')"
+          {
+            echo "# Automated maintenance status"
+            echo
+            echo "This file is updated only after the scheduled repository checks pass."
+            echo
+            echo "- **Last successful check:** ${checked_at}"
+            echo "- **Checks:** frontend tests and production build"
+            echo "- **Result:** Passed"
+            echo "- **Workflow run:** [${GITHUB_RUN_ID}](${RUN_URL})"
+            echo
+            echo "The commit history of this file provides the maintenance record."
+          } > MAINTENANCE.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add MAINTENANCE.md
+          git commit -m "chore: record automated maintenance check"
+          git push origin HEAD:main
