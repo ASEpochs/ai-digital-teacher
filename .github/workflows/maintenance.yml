@@ -1,6 +1,10 @@
 name: Repository maintenance check
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/maintenance.yml
   schedule:
     # Runs daily at 11:23 in China Standard Time (03:23 UTC).
     - cron: "23 3 * * *"
